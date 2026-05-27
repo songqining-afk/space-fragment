@@ -3,7 +3,9 @@
 > 用一句话描述想象中的空间，10 万级粒子实时采样图像像素并重组为可交互的 3D 形态。  
 > 本仓库为 **Demo 版**：在线体验使用预设样例图，完整 AI 文生图流程见下方演示视频。
 
-**体验方式：** 克隆后本地运行（见下方），或观看完整流程演示视频。
+**GitHub：** [github.com/songqining-afk/space-fragment](https://github.com/songqining-afk/space-fragment)
+
+**在线体验（GitHub Pages）：** [songqining-afk.github.io/space-fragment](https://songqining-afk.github.io/space-fragment/)
 
 **完整流程演示视频：**
 
