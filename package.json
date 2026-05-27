@@ -1,0 +1,9 @@
+{
+  "name": "space-fragment",
+  "private": true,
+  "description": "Space Fragment — words to interactive 3D particle space (demo edition)",
+  "scripts": {
+    "dev": "npx serve .",
+    "start": "npx serve ."
+  }
+}

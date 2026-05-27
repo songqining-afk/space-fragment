@@ -1,0 +1,2414 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Space Fragment</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link
+    href="https://fonts.googleapis.com/css2?family=Inter:wght@200;300;400;500;600&display=swap"
+    rel="stylesheet"
+  />
+  <script type="importmap">
+    {
+      "imports": {
+        "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
+        "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/",
+        "simplex-noise": "https://cdn.jsdelivr.net/npm/simplex-noise@4.0.1/dist/esm/simplex-noise.js"
+      }
+    }
+  </script>
+  <style>
+    :root {
+      /* Scene 1 / 2 界面英文统一使用 Inter；中文界面在 body.lang-zh 下叠中文字体 */
+      --ui-font-sans: Inter, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+      /* WCAG：黑底上正文/控件文字对比度（约 AA 及以上） */
+      --ui-text-strong: rgba(255, 255, 255, 0.72);
+      --ui-text-body: rgba(255, 255, 255, 0.52);
+      --ui-text-soft: rgba(255, 255, 255, 0.72);
+      --ui-text-muted: rgba(255, 255, 255, 0.52);
+      --ui-text-placeholder: rgba(255, 255, 255, 0.361);
+      /*
+       * 各文字块颜色调节：可直接写 #hex 或 rgba()；默认引用上方语义色保持现状。
+       */
+      --ui-color-page-text: #fff;
+      /* THE SPACE FRAGMENT：品牌主焦点 #E8E8E8 */
+      --ui-color-kicker: #e8e8e8;
+      --ui-color-title: var(--ui-text-body);
+      --ui-color-label: var(--ui-text-muted);
+      --ui-color-input: var(--ui-text-strong);
+      --ui-color-input-placeholder: var(--ui-text-placeholder);
+      --ui-color-input-line-border: rgba(255, 255, 255, 0.48);
+      --ui-color-form-error: #ef4444;
+      --ui-color-generate-btn: var(--ui-color-generate-fill);
+      --ui-color-generate-btn-hover: var(--ui-color-generate-fill-hover);
+      /* Generate：浅灰字 + 柔光（#syncBtn，仅模糊光晕无硬边） */
+      --ui-color-generate-fill: rgba(186, 192, 202, 0.715);
+      --ui-color-generate-fill-hover: rgba(208, 214, 224, 0.94);
+      --ui-color-btn-sync-pill-text: #000;
+      --ui-color-scene2-back: var(--ui-text-muted);
+      --ui-color-scene2-back-hover: var(--ui-text-strong);
+      --ui-color-foot: var(--ui-text-muted);
+      --ui-color-foot-hover: var(--ui-text-body);
+      --ui-color-export: var(--ui-text-muted);
+      --ui-color-export-hover: var(--ui-text-strong);
+      --ui-color-lang: var(--ui-text-muted);
+      --ui-color-lang-hover: var(--ui-text-body);
+      --ui-color-lang-active: var(--ui-text-strong);
+      --ui-color-boot-label: var(--ui-text-muted);
+      --ui-color-scene2-status: rgba(255, 255, 255, 0.85);
+      --ui-focus-ring: #93c5fd;
+      --ui-stage-padding: 15px;
+      --ui-panel-max-width: 42rem;
+      --ui-orb-gap: 1rem;
+      --ui-orb-ring-size: 7rem;
+      --ui-kicker-size: 16px;
+      --ui-kicker-margin-bottom: 1rem;
+      --ui-title-margin-bottom: 7rem;
+      --ui-title-size: clamp(1.75rem, 5vw, 2.25rem);
+      --ui-label-margin-bottom: 1.5rem;
+      --ui-label-size: 10px;
+      --ui-input-width: 12rem;
+      --ui-input-gap: 2rem;
+      --ui-input-font-size: 0.7rem;
+      --ui-btn-pad-y: 0.875rem;
+      --ui-btn-pad-x: 3rem;
+      --ui-btn-font-size: 16px;
+      --ui-foot-bottom: 1.2rem;
+      --ui-foot-pad-x: 1.2rem;
+      --ui-foot-font-size: 8px;
+    }
+
+    *,
+    *::before,
+    *::after {
+      box-sizing: border-box;
+    }
+
+    html,
+    body {
+      margin: 0;
+      min-height: 100%;
+      background: #000;
+      color: var(--ui-color-page-text);
+      font-family: var(--ui-font-sans);
+      -webkit-font-smoothing: antialiased;
+    }
+
+    body.lang-zh {
+      font-family: "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", "Noto Sans SC", var(--ui-font-sans);
+    }
+
+    button,
+    input,
+    textarea,
+    select {
+      font-family: inherit;
+    }
+
+    /* 键盘：Tab 可见焦点（仅键盘，鼠标点击不画圈） */
+    :where(a, button, input, textarea, select, summary):focus {
+      outline: none;
+    }
+
+    :where(a, button, input, textarea, select, summary):focus-visible {
+      outline: 2px solid var(--ui-focus-ring);
+      outline-offset: 3px;
+    }
+
+    body.scene-2 {
+      background: #0a0a0a;
+    }
+
+    body.scene-2 .flow-bg {
+      background: #0a0a0a;
+    }
+
+    .flow-bg {
+      position: fixed;
+      inset: 0;
+      z-index: 0;
+      pointer-events: none;
+      overflow: hidden;
+      background: #000;
+    }
+
+    .flow-bg canvas {
+      position: relative;
+      z-index: 1;
+      display: block;
+      width: 100%;
+      height: 100%;
+    }
+
+    /* Scene 2：HF 文生图预览（canvas 叠在上面） */
+    .scene2-flux-img {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      opacity: 0;
+      pointer-events: none;
+      z-index: 0;
+      transition: opacity 1.1s ease;
+    }
+
+    body.scene-2 .scene2-flux-img.is-visible {
+      opacity: 0.62;
+    }
+
+    /* 粒子拼图像时隐藏底图，避免重影 */
+    body.scene-2.scene2-particle-portrait .scene2-flux-img.is-visible {
+      opacity: 0;
+      transition: opacity 0.5s ease;
+    }
+
+    .stage {
+      position: relative;
+      z-index: 1;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: var(--ui-stage-padding);
+      text-align: center;
+      pointer-events: none;
+      background: transparent;
+    }
+
+    .stage .panel,
+    .stage input,
+    .stage button,
+    .stage label {
+      pointer-events: auto;
+    }
+
+    .panel {
+      width: 100%;
+      max-width: var(--ui-panel-max-width);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+
+    .orb-wrap {
+      margin-bottom: var(--ui-orb-gap);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .orb-ring {
+      position: relative;
+      width: var(--ui-orb-ring-size);
+      height: var(--ui-orb-ring-size);
+      border: none;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition:
+        background 0.5s ease,
+        width 0.85s cubic-bezier(0.4, 0, 0.2, 1),
+        height 0.85s cubic-bezier(0.4, 0, 0.2, 1);
+      overflow: visible;
+    }
+
+    .kicker {
+      font-size: var(--ui-kicker-size);
+      font-weight: 500;
+      text-transform: uppercase;
+      color: var(--ui-color-kicker);
+      margin-top: -4.25rem;
+      margin-bottom: var(--ui-kicker-margin-bottom);
+      letter-spacing: calc(0.6em + 2px);
+      text-shadow:
+        0 0 1px rgba(255, 255, 255, 0.18),
+        0 0 14px rgba(215, 226, 248, 0.2),
+        0 0 32px rgba(185, 205, 238, 0.1),
+        0 0 52px rgba(165, 188, 228, 0.06);
+      transition:
+        opacity 0.45s ease,
+        letter-spacing 0.5s ease,
+        text-shadow 0.45s ease;
+    }
+
+    .headline-slot {
+      width: 100%;
+      margin: 0 0 var(--ui-title-margin-bottom);
+      min-height: clamp(2.5rem, 6vw, 3.25rem);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .headline-slot .main-title {
+      margin: 0;
+      max-width: var(--ui-panel-max-width);
+      text-align: center;
+    }
+
+    h1.main-title {
+      margin: 0;
+      font-size: var(--ui-title-size);
+      font-weight: 200;
+      letter-spacing: 0.1em;
+      color: var(--ui-color-title);
+      transition: opacity 0.45s ease;
+    }
+
+    .form-block {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      width: 100%;
+      /* 与 .kicker 负 margin-top 抵消；并随 kicker→h1 间距变化微调，避免整块表单被顶下去 */
+      margin-top: 7.65rem;
+    }
+
+    .form-block label {
+      letter-spacing: 0.2em;
+      font-size: var(--ui-label-size);
+      text-transform: uppercase;
+      color: var(--ui-color-label);
+      margin-bottom: var(--ui-label-margin-bottom);
+      transition: opacity 0.4s ease;
+    }
+
+    .input-line {
+      width: var(--ui-input-width);
+      border-bottom: 1px solid var(--ui-color-input-line-border);
+      padding-bottom: 0.5rem;
+      margin-bottom: var(--ui-input-gap);
+      transition: opacity 0.4s ease;
+    }
+
+    .input-line input {
+      width: 100%;
+      background: transparent;
+      border: none;
+      text-align: center;
+      font-size: var(--ui-input-font-size);
+      letter-spacing: 0.4em;
+      color: var(--ui-color-input);
+      outline: none;
+    }
+
+    .input-line input::placeholder {
+      color: var(--ui-color-input-placeholder);
+    }
+
+    .form-error {
+      box-sizing: border-box;
+      width: 100%;
+      max-width: min(92vw, 26rem);
+      margin: 0 0 0.75rem;
+      padding: 0.35rem 0.5rem;
+      font-size: 10px;
+      font-weight: 500;
+      line-height: 1.45;
+      letter-spacing: 0.1em;
+      text-align: center;
+      color: var(--ui-color-form-error);
+      background: transparent;
+      border: none;
+      border-radius: 0;
+    }
+
+    .form-error[hidden] {
+      display: none !important;
+    }
+
+    body.lang-zh .form-error {
+      letter-spacing: 0.1em;
+    }
+
+    body.scene-2 #formErrorMsg {
+      display: none !important;
+    }
+
+    .btn-sync {
+      padding: var(--ui-btn-pad-y) var(--ui-btn-pad-x);
+      background: #e5e7eb;
+      color: var(--ui-color-btn-sync-pill-text);
+      font-size: var(--ui-btn-font-size);
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.4em;
+      border: none;
+      border-radius: 9999px;
+      cursor: pointer;
+      transition: background 0.45s ease, color 0.45s ease, border-color 0.45s ease, box-shadow 0.45s ease,
+        opacity 0.45s ease;
+    }
+
+    /* Scene 1：Generate — 浅灰字；光晕全部为 blur，无位移硬边，精致微光 */
+    #syncBtn {
+      background: transparent;
+      color: var(--ui-color-generate-fill);
+      border: none;
+      border-radius: 0;
+      box-shadow: none;
+      font-size: var(--ui-kicker-size);
+      font-weight: 400;
+      letter-spacing: 0.6em;
+      line-height: 1.35;
+      min-height: 2.75rem;
+      padding: 0.55rem var(--ui-btn-pad-x) 0.65rem;
+      -webkit-text-stroke: 0;
+      text-shadow:
+        0 0 1px rgba(255, 255, 255, 0.14),
+        0 0 9px rgba(218, 226, 242, 0.22),
+        0 0 20px rgba(198, 210, 234, 0.12),
+        0 0 34px rgba(175, 192, 222, 0.07);
+      transition:
+        color 0.28s ease,
+        text-shadow 0.32s ease,
+        opacity 0.22s ease;
+    }
+
+    #syncBtn:hover {
+      background: transparent;
+      color: var(--ui-color-generate-fill-hover);
+      text-shadow:
+        0 0 1px rgba(255, 255, 255, 0.2),
+        0 0 11px rgba(228, 235, 252, 0.28),
+        0 0 24px rgba(208, 218, 242, 0.16),
+        0 0 40px rgba(188, 205, 232, 0.09);
+      opacity: 1;
+    }
+
+    #syncBtn:active {
+      opacity: 0.9;
+    }
+
+    #syncBtn:focus-visible {
+      outline: 2px solid var(--ui-focus-ring);
+      outline-offset: 6px;
+      border-radius: 2px;
+    }
+
+    .btn-sync:hover {
+      background: #fff;
+    }
+
+    .foot {
+      position: fixed;
+      bottom: var(--ui-foot-bottom);
+      left: 0;
+      right: 0;
+      z-index: 2;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      /* 右侧与 .lang-switch 同一缩进 */
+      padding-left: var(--ui-foot-pad-x);
+      padding-right: var(--ui-stage-padding);
+      font-size: var(--ui-foot-font-size);
+      text-transform: uppercase;
+      letter-spacing: 0.2em;
+      color: var(--ui-color-foot);
+      pointer-events: auto;
+      transition: opacity 0.5s ease;
+    }
+
+    .btn-sync:disabled {
+      opacity: 0.45;
+      cursor: wait;
+      pointer-events: none;
+    }
+
+    ::selection {
+      background: rgba(31, 41, 55, 0.9);
+    }
+
+    .ui-fade {
+      transition: opacity 0.45s ease;
+    }
+
+    .scene-1-only {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      width: 100%;
+    }
+
+    /* Scene 2：上部区块仍占位（与 Scene 1 同布局），避免表单整体上移 */
+    body.scene-2 .scene-1-only .orb-wrap,
+    body.scene-2 .scene-1-only .kicker,
+    body.scene-2 .scene-1-only .main-title {
+      visibility: hidden;
+      pointer-events: none;
+      user-select: none;
+    }
+
+    body.scene-2 .form-block > label,
+    body.scene-2 .form-block .input-line {
+      visibility: hidden;
+      pointer-events: none;
+      user-select: none;
+    }
+
+    body.scene-2 #syncBtn {
+      display: none !important;
+    }
+
+    #scene2BackBtn {
+      display: none;
+    }
+
+    /* Scene 2：返回 — 左上角；字号/字距/内边距与右上角 #exportJpegBtn 一致 */
+    body.scene-2 #scene2BackBtn {
+      position: fixed;
+      top: var(--ui-stage-padding);
+      left: var(--ui-stage-padding);
+      z-index: 7;
+      display: inline-block;
+      margin: 0;
+      max-width: min(78vw, 22rem);
+      text-align: left;
+      background: transparent;
+      color: var(--ui-color-scene2-back);
+      border: none;
+      border-radius: 0;
+      box-shadow: none;
+      font-size: 10px;
+      font-weight: 600;
+      letter-spacing: 0.2em;
+      text-transform: uppercase;
+      padding: 0.25rem 0.15rem;
+      cursor: pointer;
+    }
+
+    body.scene-2 #scene2BackBtn:hover {
+      background: transparent;
+      color: var(--ui-color-scene2-back-hover);
+    }
+
+    /* Scene 2：全屏为悬浮按钮，底栏隐藏 */
+    body.scene-2 .foot {
+      display: none;
+    }
+
+    body.scene-2 #footLeft {
+      display: none;
+    }
+
+    /* 左下状态条已关闭（保留节点供脚本兼容） */
+    .scene2-status {
+      display: none !important;
+      position: fixed;
+      left: 14px;
+      bottom: 72px;
+      z-index: 20;
+      max-width: min(90vw, 400px);
+      padding: 10px 14px;
+      font-size: 10px;
+      line-height: 1.5;
+      letter-spacing: 0.02em;
+      color: var(--ui-color-scene2-status);
+      background: rgba(12, 14, 20, 0.88);
+      border: 1px solid rgba(255, 255, 255, 0.14);
+      border-radius: 10px;
+      pointer-events: none;
+      text-align: left;
+      white-space: pre-wrap;
+      box-shadow: 0 10px 36px rgba(0, 0, 0, 0.45);
+    }
+
+    .scene2-status[hidden] {
+      display: none !important;
+    }
+
+    @media (max-width: 640px) {
+      .foot {
+        flex-direction: column;
+        gap: 1rem;
+        align-items: stretch;
+        padding-left: 1.5rem;
+        padding-right: var(--ui-stage-padding);
+      }
+
+      #footLeft {
+        text-align: center;
+      }
+    }
+
+    /* 语言切换：仅 Scene 1 右上角；Scene 2 沿用进入前所选语言 */
+    .lang-switch {
+      position: fixed;
+      top: var(--ui-stage-padding);
+      right: var(--ui-stage-padding);
+      z-index: 5;
+      display: flex;
+      align-items: center;
+      gap: 0.35rem;
+      font-size: 10px;
+      letter-spacing: 0.2em;
+      text-transform: uppercase;
+      color: var(--ui-color-lang);
+      pointer-events: auto;
+    }
+
+    body.scene-2 .lang-switch {
+      display: none;
+    }
+
+    .lang-switch button {
+      background: none;
+      border: none;
+      color: inherit;
+      cursor: pointer;
+      padding: 0.25rem 0.15rem;
+      font: inherit;
+      letter-spacing: inherit;
+    }
+
+    .lang-switch #langBtnZh {
+      text-transform: none;
+      letter-spacing: 0.2em;
+    }
+
+    .lang-switch button:hover {
+      color: var(--ui-color-lang-hover);
+    }
+
+    .lang-switch button.is-active {
+      color: var(--ui-color-lang-active);
+      font-weight: 600;
+      pointer-events: none;
+    }
+
+    .lang-switch .lang-sep {
+      opacity: 0.45;
+      user-select: none;
+      pointer-events: none;
+    }
+
+    /* 与 body.lang-zh #exportJpegBtn 一致：中文不设全大写 */
+    body.lang-zh #scene2BackBtn {
+      letter-spacing: 0.2em;
+      text-transform: none;
+    }
+
+    /* 点击 Generate 后占据按钮位：加载进度条 */
+    .generate-progress-wrap {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      box-sizing: border-box;
+      width: 100%;
+      max-width: min(92vw, 22rem);
+      margin: 0 auto;
+      padding: var(--ui-btn-pad-y) var(--ui-btn-pad-x);
+      pointer-events: none;
+      user-select: none;
+    }
+
+    .generate-progress-wrap[hidden] {
+      display: none !important;
+    }
+
+    body.scene-2 .generate-progress-wrap {
+      display: none !important;
+    }
+
+    .generate-progress-track {
+      position: relative;
+      width: min(10rem, 60vw);
+      height: 3px;
+      border-radius: 999px;
+      background: rgba(255, 255, 255, 0.1);
+      overflow: hidden;
+      box-shadow: 0 0 20px rgba(160, 190, 255, 0.12);
+    }
+
+    .generate-progress-fill {
+      position: absolute;
+      left: 0;
+      top: 0;
+      bottom: 0;
+      width: 100%;
+      transform-origin: left center;
+      transform: scaleX(0);
+      border-radius: inherit;
+      background: linear-gradient(
+        90deg,
+        rgba(150, 185, 255, 0.45),
+        rgba(230, 236, 255, 0.92),
+        rgba(180, 210, 255, 0.55)
+      );
+      background-size: 200% 100%;
+      animation: generate-progress-shimmer 2.2s ease-in-out infinite;
+    }
+
+    @keyframes generate-progress-shimmer {
+      0% {
+        background-position: 0% 50%;
+      }
+      100% {
+        background-position: 100% 50%;
+      }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      .generate-progress-fill {
+        animation: none;
+        background: rgba(220, 230, 252, 0.75);
+      }
+    }
+
+    /* Scene 1 初始加载进度环 */
+    .boot-overlay {
+      position: fixed;
+      inset: 0;
+      z-index: 30;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: #000;
+      pointer-events: auto;
+      transition: opacity 0.55s ease, visibility 0.55s ease;
+    }
+
+    .boot-overlay.boot-overlay--done {
+      opacity: 0;
+      visibility: hidden;
+      pointer-events: none;
+    }
+
+    .boot-ring-wrap {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 1.25rem;
+    }
+
+    .boot-svg {
+      width: 88px;
+      height: 88px;
+    }
+
+    .boot-track {
+      fill: none;
+      stroke: rgba(255, 255, 255, 0.14);
+      stroke-width: 2.5;
+    }
+
+    .boot-arc {
+      fill: none;
+      stroke: rgba(255, 255, 255, 0.72);
+      stroke-width: 2.75;
+      stroke-linecap: round;
+      transform: rotate(-90deg);
+      transform-origin: 50% 50%;
+    }
+
+    .boot-label {
+      font-size: 10px;
+      letter-spacing: 0.4em;
+      text-transform: uppercase;
+      color: var(--ui-color-boot-label);
+    }
+
+    /* Scene 2：导出 JPEG — 与 Scene 1 右上角语言切换同一锚点 */
+    #exportJpegBtn {
+      display: none;
+      position: fixed;
+      top: var(--ui-stage-padding);
+      right: var(--ui-stage-padding);
+      bottom: auto;
+      left: auto;
+      z-index: 5;
+      background: none;
+      border: none;
+      color: var(--ui-color-export);
+      font-size: 10px;
+      font-weight: 600;
+      letter-spacing: 0.2em;
+      text-transform: uppercase;
+      cursor: pointer;
+      padding: 0.25rem 0.15rem;
+      pointer-events: auto;
+    }
+
+    body.scene-2 #exportJpegBtn {
+      display: block;
+    }
+
+    #exportJpegBtn:hover:not(:disabled) {
+      color: var(--ui-color-export-hover);
+    }
+
+    #exportJpegBtn:disabled {
+      opacity: 0.35;
+      cursor: wait;
+    }
+
+    body.lang-zh #exportJpegBtn {
+      letter-spacing: 0.2em;
+      text-transform: none;
+    }
+
+    /* 全屏：右下角悬浮图标，hover/focus 显示文案 */
+    #fullscreenBtn.fullscreen-float {
+      position: fixed;
+      right: max(0.85rem, env(safe-area-inset-right, 0px));
+      bottom: max(0.85rem, env(safe-area-inset-bottom, 0px));
+      z-index: 8;
+      box-sizing: border-box;
+      width: 2.5rem;
+      height: 2.5rem;
+      margin: 0;
+      padding: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border: 1px solid rgba(255, 255, 255, 0.14);
+      border-radius: 50%;
+      background: rgba(10, 12, 18, 0.55);
+      color: var(--ui-color-foot);
+      cursor: pointer;
+      pointer-events: auto;
+      backdrop-filter: blur(8px);
+      -webkit-backdrop-filter: blur(8px);
+      transition:
+        color 0.2s ease,
+        background 0.2s ease,
+        border-color 0.2s ease,
+        transform 0.2s ease;
+    }
+
+    #fullscreenBtn.fullscreen-float:hover,
+    #fullscreenBtn.fullscreen-float:focus-visible {
+      color: var(--ui-color-foot-hover);
+      background: rgba(18, 22, 32, 0.72);
+      border-color: rgba(255, 255, 255, 0.22);
+    }
+
+    #fullscreenBtn.fullscreen-float:active {
+      transform: scale(0.96);
+    }
+
+    #fullscreenBtn.fullscreen-float:focus-visible {
+      outline: 2px solid var(--ui-focus-ring);
+      outline-offset: 3px;
+    }
+
+    .fullscreen-float__svg {
+      width: 1.125rem;
+      height: 1.125rem;
+      flex-shrink: 0;
+      display: block;
+    }
+
+    .fullscreen-float__svg--exit {
+      display: none;
+    }
+
+    #fullscreenBtn.fullscreen-float.is-fullscreen .fullscreen-float__svg--enter {
+      display: none;
+    }
+
+    #fullscreenBtn.fullscreen-float.is-fullscreen .fullscreen-float__svg--exit {
+      display: block;
+    }
+
+    .fullscreen-float__tip {
+      position: absolute;
+      right: 0;
+      bottom: calc(100% + 10px);
+      padding: 0.35rem 0.55rem;
+      max-width: min(70vw, 14rem);
+      font-size: 9px;
+      font-weight: 600;
+      line-height: 1.3;
+      letter-spacing: 0.18em;
+      text-transform: uppercase;
+      text-align: right;
+      white-space: nowrap;
+      color: var(--ui-color-foot-hover);
+      background: rgba(10, 12, 18, 0.92);
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      border-radius: 6px;
+      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35);
+      opacity: 0;
+      visibility: hidden;
+      pointer-events: none;
+      transition:
+        opacity 0.2s ease,
+        visibility 0.2s ease;
+    }
+
+    body.lang-zh .fullscreen-float__tip {
+      letter-spacing: 0.12em;
+      text-transform: none;
+    }
+
+    #fullscreenBtn.fullscreen-float:hover .fullscreen-float__tip,
+    #fullscreenBtn.fullscreen-float:focus-visible .fullscreen-float__tip {
+      opacity: 1;
+      visibility: visible;
+    }
+
+  </style>
+</head>
+<body>
+  <div id="bootOverlay" class="boot-overlay" aria-busy="true" aria-live="polite">
+    <div class="boot-ring-wrap">
+      <svg class="boot-svg" viewBox="0 0 100 100" aria-hidden="true">
+        <circle class="boot-track" cx="50" cy="50" r="42" />
+        <circle id="bootProgressArc" class="boot-arc" cx="50" cy="50" r="42" />
+      </svg>
+      <div class="boot-label" id="bootLabel">Loading</div>
+    </div>
+  </div>
+
+  <button type="button" id="exportJpegBtn">Export JPEG</button>
+
+  <div class="lang-switch" id="langSwitch" role="group" aria-label="Language">
+    <button type="button" id="langBtnZh" lang="zh-CN">中文</button>
+    <span class="lang-sep" aria-hidden="true">/</span>
+    <button type="button" id="langBtnEn" lang="en">EN</button>
+  </div>
+
+  <div id="scene2Status" class="scene2-status" hidden></div>
+  <div id="flow-bg" class="flow-bg" aria-hidden="true">
+    <img id="scene2FluxImg" class="scene2-flux-img" alt="" decoding="async" />
+  </div>
+
+  <div class="stage">
+    <div class="panel">
+      <div class="scene-1-only">
+        <div class="orb-wrap ui-fade ui-fade-dim">
+          <div class="orb-ring"></div>
+        </div>
+
+        <div class="kicker ui-fade ui-fade-dim" id="kickerEl">YOUR UNIQUE SPACE FRAGMENT</div>
+
+        <div class="headline-slot">
+          <h1 class="main-title ui-fade ui-fade-dim" id="titleEl">WORDS INTO WORLD</h1>
+        </div>
+
+        <div class="form-block" aria-live="polite">
+          <div class="input-line">
+            <input
+              id="birth-time"
+              type="text"
+              placeholder="TYPE YOUR THOUGHTS"
+              autocomplete="off"
+              spellcheck="false"
+              aria-required="true"
+              aria-label="TYPE YOUR THOUGHTS"
+            />
+          </div>
+          <p id="formErrorMsg" class="form-error" role="alert" aria-live="assertive" hidden></p>
+          <button type="button" class="btn-sync" id="syncBtn">TRY DEMO</button>
+          <div id="generateProgressWrap" class="generate-progress-wrap" hidden aria-live="polite">
+            <div
+              id="generateProgressBar"
+              class="generate-progress-track"
+              role="progressbar"
+              aria-valuemin="0"
+              aria-valuemax="100"
+              aria-valuenow="0"
+            >
+              <div class="generate-progress-fill" id="generateProgressFill"></div>
+            </div>
+          </div>
+          <button type="button" class="btn-sync" id="scene2BackBtn">Return to previous</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <footer class="foot">
+    <div id="footLeft">© 2026 FLOW SIGHT LAB</div>
+  </footer>
+
+  <button
+    type="button"
+    id="fullscreenBtn"
+    class="fullscreen-float"
+    aria-pressed="false"
+    aria-label="Full screen"
+  >
+    <svg
+      class="fullscreen-float__svg fullscreen-float__svg--enter"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      stroke-width="1.75"
+      stroke-linecap="round"
+      stroke-linejoin="round"
+      aria-hidden="true"
+    >
+      <path d="M4 10V4h6M14 4h6v6M4 14v6h6M14 14h6v6" />
+    </svg>
+    <svg
+      class="fullscreen-float__svg fullscreen-float__svg--exit"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      stroke-width="1.75"
+      stroke-linecap="round"
+      stroke-linejoin="round"
+      aria-hidden="true"
+    >
+      <path d="M10 4H4v6M14 4h6v6M10 20H4v-6M14 20h6v-6" />
+    </svg>
+    <span class="fullscreen-float__tip">Full screen</span>
+  </button>
+
+  <script type="module">
+    import * as THREE from "three";
+    import { createNoise3D } from "simplex-noise";
+    import { EffectComposer } from "three/addons/postprocessing/EffectComposer.js";
+    import { RenderPass } from "three/addons/postprocessing/RenderPass.js";
+    import { UnrealBloomPass } from "three/addons/postprocessing/UnrealBloomPass.js";
+    const LANG_STORAGE_KEY = "spacefragment.lang";
+    const DEMO_SAMPLE_URL = "demo/sample.jpg";
+    let uiLang = localStorage.getItem(LANG_STORAGE_KEY) === "zh" ? "zh" : "en";
+
+    const STRINGS = {
+      en: {
+        kicker: "THE SPACE FRAGMENT",
+        title: "",
+        placeholderInput: "ENTER YOUR VISION",
+        generateBtn: "TRY DEMO",
+        returnBtn: "Return to previous",
+        footCopy: "© 2026 SPACE FRAGMENT",
+        defaultPromptCore: "abstract luminous space",
+        statusDemoLoad: "Loading curated space fragment sample…",
+        errDemoFailed: "Demo sample failed to load.",
+        statusLoadingIntro: "Loading demo space fragment…",
+        statusLoadingAppend: "",
+        statusImagePrefix: "Loaded ",
+        statusDecoding: " — decoding ",
+        statusWritingGrid: ", writing particle grid…",
+        fallbackDiffuse: "\n→ Pixel sampling failed; using diffuse mist fallback.",
+        portraitOkMsg: "Particles aligned to image samples.",
+        bootLabel: "Loading scene",
+        exportJpeg: "Export JPEG",
+        exportingJpeg: "Saving…",
+        generateProgressLabel: "Loading demo fragment",
+        errEmptyVision: "Type a vision or click Try Demo with the placeholder.",
+        errGenerateFriendly: "Demo did not finish. Check your connection and try again.",
+        fullscreenEnter: "Full screen",
+        fullscreenExit: "Exit full screen",
+      },
+      zh: {
+        kicker: "专 属 空 间 碎 片",
+        title: "",
+        placeholderInput: "输入关键词或画面",
+        generateBtn: "体验 Demo",
+        returnBtn: "返回上一步",
+        footCopy: "© 2026 专属空间碎片",
+        defaultPromptCore: "抽象光感空间",
+        statusDemoLoad: "正在载入精选空间碎片样例…",
+        errDemoFailed: "演示样例加载失败。",
+        statusLoadingIntro: "正在载入演示空间碎片…",
+        statusLoadingAppend: "",
+        statusImagePrefix: "已载入 ",
+        statusDecoding: " — 解码 ",
+        statusWritingGrid: "，正在写入粒子网格…",
+        fallbackDiffuse: "\n→ 像素采样未成功，已用「弥散云」兜底。",
+        portraitOkMsg: "拼图模式：粒子已对齐图像采样。",
+        bootLabel: "场景加载中",
+        exportJpeg: "导出 JPEG",
+        exportingJpeg: "正在保存…",
+        generateProgressLabel: "正在载入演示碎片",
+        errEmptyVision: "可输入构想，或直接点击「体验 Demo」。",
+        errGenerateFriendly: "演示未完成，请检查网络后重试。",
+        fullscreenEnter: "全屏",
+        fullscreenExit: "退出全屏",
+      },
+    };
+
+    function str(key) {
+      const pack = STRINGS[uiLang] || STRINGS.en;
+      return pack[key] !== undefined ? pack[key] : STRINGS.en[key];
+    }
+
+    function getFullscreenElement() {
+      return document.fullscreenElement || document.webkitFullscreenElement || null;
+    }
+
+    function syncFullscreenBtn() {
+      const btn = document.getElementById("fullscreenBtn");
+      if (!btn) return;
+      const on = !!getFullscreenElement();
+      const label = str(on ? "fullscreenExit" : "fullscreenEnter");
+      btn.setAttribute("aria-pressed", on ? "true" : "false");
+      btn.setAttribute("aria-label", label);
+      btn.classList.toggle("is-fullscreen", on);
+      const tip = btn.querySelector(".fullscreen-float__tip");
+      if (tip) tip.textContent = label;
+    }
+
+    let formErrorKey = null;
+
+    function setUiText(id, text) {
+      const el = document.getElementById(id);
+      if (el) el.textContent = text;
+    }
+
+    function applyUiStrings() {
+      document.documentElement.lang = uiLang === "zh" ? "zh-CN" : "en";
+      document.body.classList.toggle("lang-zh", uiLang === "zh");
+      setUiText("kickerEl", str("kicker"));
+      setUiText("titleEl", str("title"));
+      const inp = document.getElementById("birth-time");
+      if (inp) {
+        const ph = str("placeholderInput");
+        inp.placeholder = ph;
+        inp.setAttribute("aria-label", ph);
+      }
+      setUiText("syncBtn", str("generateBtn"));
+      setUiText("scene2BackBtn", str("returnBtn"));
+      setUiText("footLeft", str("footCopy"));
+      const genBar = document.getElementById("generateProgressBar");
+      if (genBar) genBar.setAttribute("aria-label", str("generateProgressLabel"));
+      const zhBtn = document.getElementById("langBtnZh");
+      const enBtn = document.getElementById("langBtnEn");
+      if (zhBtn) zhBtn.classList.toggle("is-active", uiLang === "zh");
+      if (enBtn) enBtn.classList.toggle("is-active", uiLang === "en");
+      setUiText("bootLabel", str("bootLabel"));
+      setUiText("exportJpegBtn", str("exportJpeg"));
+      syncFullscreenBtn();
+      if (formErrorKey) {
+        const fe = document.getElementById("formErrorMsg");
+        if (fe && !fe.hasAttribute("hidden")) fe.textContent = str(formErrorKey);
+      }
+    }
+
+    const BOOT_ARC_R = 42;
+    const BOOT_CIRC = 2 * Math.PI * BOOT_ARC_R;
+    function setBootProgress(t) {
+      const arc = document.getElementById("bootProgressArc");
+      if (!arc) return;
+      const p = Math.max(0, Math.min(1, t));
+      arc.style.strokeDasharray = String(BOOT_CIRC);
+      arc.style.strokeDashoffset = String(BOOT_CIRC * (1 - p));
+    }
+
+    function hideBootOverlay() {
+      const el = document.getElementById("bootOverlay");
+      if (!el || el.classList.contains("boot-overlay--done")) return;
+      el.classList.add("boot-overlay--done");
+      el.setAttribute("aria-busy", "false");
+      setTimeout(() => el.remove(), 650);
+    }
+
+    setBootProgress(0);
+    applyUiStrings();
+    const bootOverlayT0 = performance.now();
+    const BOOT_OVERLAY_MIN_MS = 520;
+
+    /** Scene 1：粒子流场、相机与 Bloom */
+    const PARTICLE_SCENE1 = {
+      countOverride: null,
+      countHighTier: 100000,
+      countDesktop: 65000,
+      countMobile: 35000,
+      flow: { xLo: -1, xHi: 1, yLo: -0.3, yHi: 0.3, zLo: -0.65, zHi: 5.65 },
+      cameraFov: 30,
+      cameraZ: 6,
+      dprCapHigh: 1.25,
+      dprCapLow: 1,
+      /* 提高阈值、略降强度与半径，减少 Bloom 糊成一团，粒子轮廓更清晰 */
+      bloomThreshold: 0.22,
+      bloomRadius: 6,
+      bloomStrengthHigh: 0.68,
+      bloomStrengthDesktop: 0.55,
+      bloomStrengthMobile: 0.48,
+      invertVertical: true,
+      riseSpeed: 0.000085,
+      horizontalFlowScale: 0.0215,
+      surgeHorizMult: 0,
+      diffusionAmp: 0.078,
+      verticalDiffusionRatio: 0.1,
+      centerPullXZ: 0.0002,
+      bounceDamp: 0.45,
+      colorBlueDeep: "#9a9fa1",
+      colorBlueMid: "#c0c8cc",
+      colorWhite: "#ffffff",
+      emissiveCore: 0.38,
+      pointSizeMobile: 0.055,
+      pointSizeDesktop: 0.013,
+      pointAttenuation: 220.0,
+      pointSizeMin: 0.85,
+      pointSizeMax: 12,
+      uOpacity: 0.85,
+      uBright: 0.36,
+      damp: 0.988,
+      liveAmp: 5.3e-7,
+      parallaxMax: 0,
+      flowNoiseScale: 0.09,
+      flowTimeSpeed: 0.00465,
+      flowSampleE: 0.085,
+      flowVzScale: 0.22,
+      initVelScale: 0.39,
+      /* 越大点核越「硬」，边缘更利落 */
+      silkPointFalloff: 1.05,
+      silkDriftY: 0,
+      silkDriftXAmp: 0,
+      surgeKx: 0.22,
+      surgeKz: 0.6,
+      surgeOmega: 0.14,
+      surgeAmp: 0.38,
+      surgeVelScale: 0.0029,
+      surgeAmpY: 0.011,
+      seaCoreGlow: 0.08,
+      seaEdgeDim: 0.02,
+    };
+
+    /** Scene 2：根据输入文案聚拢成的 3D 目标形变 */
+    const SCENE2_MORPH = {
+      morphSec: 6.2,
+      morphPull: 0.052,
+      morphWobble: 0.011,
+      flowMixWhileMorph: 0.07,
+      dampMorph: 0.988,
+    };
+
+    /** Scene 2：整团粒子随指针倾斜/旋转（弧度上限 + 跟随速度，越大越跟手） */
+    const SCENE2_MOUSE = {
+      maxRotX: 0.42,
+      maxRotY: 0.65,
+      follow: 10,
+      /** 光标附近驱赶半径（粒子局部空间，与缩放后团块尺度同量级） */
+      repelRadius: 4.45,
+      /** 径向推开强度（乘在 morph 加速度 tx,ty,tz 上） */
+      repelStrength: 4.34,
+    };
+
+    /** Scene 2：滚轮推拉镜头（仅改相机 Z） */
+    const SCENE2_ZOOM = {
+      minZ: 3.05,
+      maxZ: 18,
+      wheelSensitivity: 10,
+    };
+
+    /** Flux 图 → 粒子像素拼贴 */
+    const SCENE2_PORTRAIT = {
+      sampleMaxSide: 480,
+      planeHeight: 3,
+      depthFromLuma: 1,
+      morphSec: 7.5,
+      morphPullMin: 0.055,
+      morphPullMax: 0.11,
+      endOpacity: 0.62,
+      endBright: 0.72,
+    };
+
+    /**
+     * Scene 2 专用相机（与 Scene 1 独立，进/出场景时自动切换）。
+     * 改 position / lookAt 即可平移、拉远、斜视；fov 填 null 表示沿用 Scene 1 的 cameraFov。
+     */
+    const SCENE2_CAMERA = {
+      fov: null,
+      position: { x: 0, y: 0, z: PARTICLE_SCENE1.cameraZ },
+      lookAt: { x: 0, y: 0, z: 3 },
+    };
+
+    /** Scene 2 整团粒子相对 Scene 1 的视觉尺度（1 = 与原先一致，0.6 ≈ 六成大小） */
+    const SCENE2_FORMATION_SCALE = 0.6;
+    /** Scene 2：整团粒子在世界坐标 Y 轴平移（正为上） */
+    const SCENE2_PARTICLE_Y_OFFSET = 10;
+
+    /** Scene 2 相机 Z（滚轮缩放）；进入场景时对齐 SCENE2_CAMERA.position.z */
+    let scene2CamZ = PARTICLE_SCENE1.cameraZ;
+
+    const host = document.getElementById("flow-bg");
+    if (!host) throw new Error("#flow-bg missing");
+    setBootProgress(0.08);
+    const noise3D = createNoise3D(() => Math.random());
+
+    const isMobile = window.matchMedia("(max-width: 640px)").matches;
+    const cpuCores = navigator.hardwareConcurrency || 4;
+    const highTierDesktop = !isMobile && cpuCores >= 8 && window.devicePixelRatio <= 1.5;
+    const count =
+      PARTICLE_SCENE1.countOverride ??
+      (highTierDesktop
+        ? PARTICLE_SCENE1.countHighTier
+        : isMobile
+          ? PARTICLE_SCENE1.countMobile
+          : PARTICLE_SCENE1.countDesktop);
+
+    const FLOW_X_LO = PARTICLE_SCENE1.flow.xLo;
+    const FLOW_X_HI = PARTICLE_SCENE1.flow.xHi;
+    const FLOW_Y_LO = PARTICLE_SCENE1.flow.yLo;
+    const FLOW_Y_HI = PARTICLE_SCENE1.flow.yHi;
+    const FLOW_Z_LO = PARTICLE_SCENE1.flow.zLo;
+    const FLOW_Z_HI = PARTICLE_SCENE1.flow.zHi;
+
+    function flowField(x, y, z, t) {
+      const ns = PARTICLE_SCENE1.flowNoiseScale;
+      const nt = t * PARTICLE_SCENE1.flowTimeSpeed;
+      const e = PARTICLE_SCENE1.flowSampleE;
+      const sx = x * ns;
+      const sy = y * ns;
+      const sz = z * ns * 0.52 + nt;
+      const n = (px, py, pz) => noise3D(px, py, pz);
+      const dndy = (n(sx, sy + e, sz) - n(sx, sy - e, sz)) / (2 * e);
+      const dndx = (n(sx + e, sy, sz) - n(sx - e, sy, sz)) / (2 * e);
+      const vx = dndy;
+      const vy = -dndx;
+      const vz =
+        ((n(sx, sy, sz + e) - n(sx, sy, sz - e)) / (2 * e)) * PARTICLE_SCENE1.flowVzScale;
+      return { vx, vy, vz };
+    }
+
+    function deepSurgeVelocity(x, y, z, t) {
+      const ph = PARTICLE_SCENE1.surgeKx * x + PARTICLE_SCENE1.surgeKz * z + t * PARTICLE_SCENE1.surgeOmega;
+      const s = PARTICLE_SCENE1.surgeVelScale * PARTICLE_SCENE1.surgeAmp;
+      const hm = PARTICLE_SCENE1.surgeHorizMult;
+      return {
+        vx: hm * s * Math.sin(ph),
+        vy: s * PARTICLE_SCENE1.surgeAmpY * Math.sin(ph * 0.71 + 1.07),
+        vz: hm * s * 0.55 * Math.cos(ph * 0.63 + y * 0.08),
+      };
+    }
+
+    const scene = new THREE.Scene();
+    scene.background = new THREE.Color(0x000000);
+
+    const camera = new THREE.PerspectiveCamera(PARTICLE_SCENE1.cameraFov, 1, 0.1, 120);
+    camera.position.set(0, 0, PARTICLE_SCENE1.cameraZ);
+    camera.lookAt(0, 0, 0);
+    setBootProgress(0.22);
+
+    function applyScene1Camera() {
+      camera.fov = PARTICLE_SCENE1.cameraFov;
+      camera.position.set(0, 0, PARTICLE_SCENE1.cameraZ);
+      camera.lookAt(0, 0, 0);
+      camera.updateProjectionMatrix();
+    }
+
+    function applyScene2Camera() {
+      const c = SCENE2_CAMERA;
+      const yOff = SCENE2_PARTICLE_Y_OFFSET;
+      if (typeof c.fov === "number") {
+        camera.fov = c.fov;
+      } else {
+        camera.fov = PARTICLE_SCENE1.cameraFov;
+      }
+      /* 与 particles.position.y 同向平移视线中心；Z 用 scene2CamZ 支持滚轮缩放 */
+      camera.position.set(c.position.x, c.position.y + yOff, scene2CamZ);
+      camera.lookAt(c.lookAt.x, c.lookAt.y + yOff, c.lookAt.z);
+      camera.updateProjectionMatrix();
+    }
+
+    const renderer = new THREE.WebGLRenderer({
+      antialias: !isMobile,
+      alpha: false,
+      powerPreference: "high-performance",
+      preserveDrawingBuffer: true,
+    });
+    renderer.setPixelRatio(
+      Math.min(
+        window.devicePixelRatio,
+        highTierDesktop ? PARTICLE_SCENE1.dprCapHigh : PARTICLE_SCENE1.dprCapLow
+      )
+    );
+    renderer.outputColorSpace = THREE.SRGBColorSpace;
+    renderer.toneMapping = THREE.NoToneMapping;
+    renderer.setClearColor(0x000000, 1);
+    host.appendChild(renderer.domElement);
+
+    const composer = new EffectComposer(renderer);
+    composer.addPass(new RenderPass(scene, camera));
+    const bloomPass = new UnrealBloomPass(
+      new THREE.Vector2(1, 1),
+      PARTICLE_SCENE1.bloomStrengthDesktop,
+      PARTICLE_SCENE1.bloomRadius,
+      PARTICLE_SCENE1.bloomThreshold
+    );
+    bloomPass.threshold = PARTICLE_SCENE1.bloomThreshold;
+    bloomPass.strength = highTierDesktop
+      ? PARTICLE_SCENE1.bloomStrengthHigh
+      : isMobile
+        ? PARTICLE_SCENE1.bloomStrengthMobile
+        : PARTICLE_SCENE1.bloomStrengthDesktop;
+    bloomPass.radius = PARTICLE_SCENE1.bloomRadius;
+    composer.addPass(bloomPass);
+    setBootProgress(0.4);
+    const bloomStrengthScene1 = bloomPass.strength;
+
+    const COLOR_BLUE_DEEP = new THREE.Color(PARTICLE_SCENE1.colorBlueDeep);
+    const COLOR_BLUE_MID = new THREE.Color(PARTICLE_SCENE1.colorBlueMid);
+    const COLOR_WHITE = new THREE.Color(PARTICLE_SCENE1.colorWhite);
+    const colorTmp = new THREE.Color();
+
+    function blueWhiteColorAt(y, speed, out) {
+      const ySpan = FLOW_Y_HI - FLOW_Y_LO;
+      const yN = ySpan > 1e-6 ? THREE.MathUtils.clamp((y - FLOW_Y_LO) / ySpan, 0, 1) : 0.5;
+      const lift = Math.pow(yN, 0.82);
+      out.copy(COLOR_BLUE_DEEP).lerp(COLOR_BLUE_MID, lift);
+      out.lerp(COLOR_WHITE, yN * yN * 0.94);
+      const sp = THREE.MathUtils.clamp(speed * 34, 0, 1);
+      out.lerp(COLOR_WHITE, sp * 0.1);
+      out.r = Math.min(1, out.r);
+      out.g = Math.min(1, out.g);
+      out.b = Math.min(1, out.b);
+    }
+
+    const geo = new THREE.BufferGeometry();
+    const positions = new Float32Array(count * 3);
+    const colors = new Float32Array(count * 3);
+    const vels = new Float32Array(count * 3);
+    const morphTarget = new Float32Array(count * 3);
+    const scene2ImageColorTarget = new Float32Array(count * 3);
+    let scene2PortraitMode = false;
+
+    const portraitSampleCanvas = document.createElement("canvas");
+    const portraitSampleCtx = portraitSampleCanvas.getContext("2d", { willReadFrequently: true });
+
+    function hash01(i) {
+      const s = Math.sin(i * 127.1 + i * 311.7) * 43758.5453123;
+      return s - Math.floor(s);
+    }
+
+    /**
+     * Demo 模式：载入仓库内预设样例图，不调用外部 AI API。
+     * 返回 { blob, urlUsed }。
+     */
+    async function fetchVisionReferenceBlob(_userText, onStatus) {
+      onStatus(str("statusDemoLoad"));
+      await new Promise((r) => setTimeout(r, 600));
+      const res = await fetch(DEMO_SAMPLE_URL);
+      if (!res.ok) {
+        throw new Error(str("errDemoFailed"));
+      }
+      const blob = await res.blob();
+      if (!blob || blob.size < 64) {
+        throw new Error(str("errDemoFailed"));
+      }
+      return { blob, urlUsed: "demo:sample.jpg" };
+    }
+
+    /** ImageBitmap 或 <img>：栅格化到 count 个粒子 */
+    function fillMorphTargetsFromDrawSource(src) {
+      const iw =
+        typeof ImageBitmap !== "undefined" && src instanceof ImageBitmap
+          ? src.width
+          : src.naturalWidth || src.width;
+      const ih =
+        typeof ImageBitmap !== "undefined" && src instanceof ImageBitmap
+          ? src.height
+          : src.naturalHeight || src.height;
+      if (iw < 1 || ih < 1 || !portraitSampleCtx) return false;
+
+      let w = iw;
+      let h = ih;
+      const maxS = SCENE2_PORTRAIT.sampleMaxSide;
+      if (Math.max(w, h) > maxS) {
+        const sc = maxS / Math.max(w, h);
+        w = Math.max(2, Math.floor(w * sc));
+        h = Math.max(2, Math.floor(h * sc));
+      }
+      portraitSampleCanvas.width = w;
+      portraitSampleCanvas.height = h;
+      portraitSampleCtx.drawImage(src, 0, 0, w, h);
+      let data;
+      try {
+        data = portraitSampleCtx.getImageData(0, 0, w, h).data;
+      } catch (err) {
+        console.warn("Flux portrait: getImageData failed (CORS?)", err);
+        return false;
+      }
+
+      const imgAspect = w / h;
+      let cols = Math.round(Math.sqrt(count * imgAspect));
+      cols = Math.max(2, Math.min(cols, count - 1));
+      const rows = Math.ceil(count / cols);
+
+      const planeH = SCENE2_PORTRAIT.planeHeight;
+      const planeW = planeH * imgAspect;
+      const zAmp = SCENE2_PORTRAIT.depthFromLuma;
+      const n = count;
+
+      for (let i = 0; i < n; i++) {
+        const i3 = i * 3;
+        const c = i % cols;
+        const r = Math.floor(i / cols);
+        const u = (c + 0.5) / cols;
+        const v = (r + 0.5) / rows;
+        const sx = Math.min(w - 1, Math.max(0, Math.floor(u * w)));
+        const sy = Math.min(h - 1, Math.max(0, Math.floor(v * h)));
+        const p = (sy * w + sx) * 4;
+        const rr = data[p] / 255;
+        const gg = data[p + 1] / 255;
+        const bb = data[p + 2] / 255;
+        const L = 0.299 * rr + 0.587 * gg + 0.114 * bb;
+
+        scene2ImageColorTarget[i3] = rr;
+        scene2ImageColorTarget[i3 + 1] = gg;
+        scene2ImageColorTarget[i3 + 2] = bb;
+
+        morphTarget[i3] = (u - 0.5) * planeW;
+        morphTarget[i3 + 1] = (0.5 - v) * planeH;
+        morphTarget[i3 + 2] = (L - 0.5) * zAmp;
+      }
+      return true;
+    }
+
+    function fillMorphTargets(shape) {
+      const phiG = (1 + Math.sqrt(5)) / 2;
+      const n = count;
+      const TWO_PI = Math.PI * 2;
+
+      /** Scene 2 专用：与文案解耦的弥散体积，避免球/环等可辨认几何抢戏 */
+      if (shape === "ambient") {
+        for (let i = 0; i < n; i++) {
+          const i3 = i * 3;
+          const u = hash01(i * 1.03 + 0.1);
+          const v = hash01(i * 2.17 + 0.2);
+          const w = hash01(i * 3.31 + 0.3);
+          let x = (u - 0.5) * 3.5;
+          let y = (v - 0.5) * 2.7;
+          let z = (w - 0.5) * 3.1;
+          x += Math.sin(v * 11.2 + u * 6.1) * 0.24;
+          y += Math.sin(u * 9.7 + w * 5.3) * 0.2;
+          z += Math.cos(v * 8.1 + w * 7.4) * 0.22;
+          morphTarget[i3] = x;
+          morphTarget[i3 + 1] = y;
+          morphTarget[i3 + 2] = z;
+        }
+        return;
+      }
+
+      if (shape === "sphere") {
+        for (let i = 0; i < n; i++) {
+          const u = (i + 0.5) / n;
+          const ph = Math.acos(1 - 2 * u);
+          const th = TWO_PI * phiG * i;
+          const R = 1.55;
+          morphTarget[i * 3] = R * Math.sin(ph) * Math.cos(th);
+          morphTarget[i * 3 + 1] = R * Math.sin(ph) * Math.sin(th) * 0.92;
+          morphTarget[i * 3 + 2] = R * Math.cos(ph) * 0.85;
+        }
+        return;
+      }
+
+      if (shape === "torus") {
+        const R0 = 1.2;
+        const r0 = 0.42;
+        for (let i = 0; i < n; i++) {
+          const u = (i / n) * TWO_PI * 3;
+          const v = hash01(i * 7.1) * TWO_PI;
+          morphTarget[i * 3] = (R0 + r0 * Math.cos(v)) * Math.cos(u);
+          morphTarget[i * 3 + 1] = (R0 + r0 * Math.cos(v)) * Math.sin(u) * 0.94;
+          morphTarget[i * 3 + 2] = r0 * Math.sin(v) * 0.9;
+        }
+        return;
+      }
+
+      if (shape === "heart") {
+        const sc = 0.055;
+        for (let i = 0; i < n; i++) {
+          const u = (i / n) * TWO_PI + hash01(i) * 0.4;
+          const x = 16 * Math.pow(Math.sin(u), 3) * sc;
+          const y =
+            (13 * Math.cos(u) - 5 * Math.cos(2 * u) - 2 * Math.cos(3 * u) - Math.cos(4 * u)) * sc;
+          morphTarget[i * 3] = x;
+          morphTarget[i * 3 + 1] = y;
+          morphTarget[i * 3 + 2] = (hash01(i + 2) - 0.5) * 0.55;
+        }
+        return;
+      }
+
+      if (shape === "spiral") {
+        for (let i = 0; i < n; i++) {
+          const u = (i / n) * TWO_PI * 14;
+          const rad = 0.09 * u + 0.08;
+          morphTarget[i * 3] = rad * Math.cos(u);
+          morphTarget[i * 3 + 1] = rad * Math.sin(u) * 0.95;
+          morphTarget[i * 3 + 2] = (i / n - 0.5) * 1.1;
+        }
+        return;
+      }
+
+      if (shape === "starfield") {
+        for (let i = 0; i < n; i++) {
+          const ray = Math.floor(hash01(i * 3.3) * 9) + 3;
+          const ang = (hash01(i * 5.2) + (i % ray) / ray) * TWO_PI;
+          const rad = 0.35 + Math.pow(hash01(i * 11.7), 0.55) * 1.75;
+          morphTarget[i * 3] = rad * Math.cos(ang);
+          morphTarget[i * 3 + 1] = rad * Math.sin(ang) * 0.93;
+          morphTarget[i * 3 + 2] = (hash01(i * 2.9) - 0.5) * 0.9;
+        }
+        return;
+      }
+
+      if (shape === "wave") {
+        const gn = Math.max(32, Math.floor(Math.sqrt(n * 0.92)));
+        for (let i = 0; i < n; i++) {
+          const xi = i % gn;
+          const yi = Math.floor(i / gn) % gn;
+          const fx = xi / Math.max(1, gn - 1);
+          const fy = yi / Math.max(1, gn - 1);
+          const wx = (fx - 0.5) * 3.2;
+          const wy = (fy - 0.5) * 2.6;
+          morphTarget[i * 3] = wx;
+          morphTarget[i * 3 + 1] = wy + Math.sin(wx * 2.1) * 0.38 + Math.cos(fy * TWO_PI) * 0.12;
+          morphTarget[i * 3 + 2] = Math.sin(wx * 1.4 + wy * 1.7) * 0.28;
+        }
+        return;
+      }
+
+      if (shape === "flower") {
+        const k = 4.5;
+        for (let i = 0; i < n; i++) {
+          const th = (i / n) * TWO_PI * 2;
+          const r = 0.15 + 1.35 * Math.max(0, Math.cos(k * th));
+          morphTarget[i * 3] = r * Math.cos(th);
+          morphTarget[i * 3 + 1] = r * Math.sin(th) * 0.92;
+          morphTarget[i * 3 + 2] = (hash01(i * 4.4) - 0.5) * 0.45;
+        }
+        return;
+      }
+
+      if (shape === "rain") {
+        const cols = 48;
+        for (let i = 0; i < n; i++) {
+          const c = i % cols;
+          const row = Math.floor(i / cols);
+          morphTarget[i * 3] = (c / cols - 0.5) * 2.4 + (hash01(i) - 0.5) * 0.08;
+          morphTarget[i * 3 + 1] = ((row * 0.11 + hash01(i * 2)) % 2.2) - 1.1;
+          morphTarget[i * 3 + 2] = Math.sin(i * 0.09 + row * 0.2) * 0.25;
+        }
+        return;
+      }
+
+      for (let i = 0; i < n; i++) {
+        const u = hash01(i * 1.7);
+        const v = hash01(i * 2.3);
+        const w = hash01(i * 3.1);
+        const rad = 1.15 + 0.65 * Math.cbrt(u);
+        const th = v * TWO_PI;
+        const ph = Math.acos(2 * w - 1);
+        morphTarget[i * 3] = rad * Math.sin(ph) * Math.cos(th);
+        morphTarget[i * 3 + 1] = rad * Math.sin(ph) * Math.sin(th) * 0.9;
+        morphTarget[i * 3 + 2] = rad * Math.cos(ph) * 0.75;
+      }
+    }
+
+    geo.setAttribute("position", new THREE.BufferAttribute(positions, 3));
+    geo.setAttribute("color", new THREE.BufferAttribute(colors, 3));
+
+    function resetParticlesScene1() {
+      const pos = geo.attributes.position.array;
+      const col = geo.attributes.color.array;
+      for (let i = 0; i < count; i++) {
+        const i3 = i * 3;
+        const u = Math.random();
+        const v = Math.random();
+        const theta = u * Math.PI * 2;
+        const phi = Math.acos(2 * v - 1);
+        const r = 3.65 * Math.pow(Math.random(), 0.72);
+        pos[i3] = r * Math.sin(phi) * Math.cos(theta) * 1.52;
+        pos[i3 + 1] = r * Math.sin(phi) * Math.sin(theta) * 0.78;
+        pos[i3 + 2] = r * Math.cos(phi) * 0.9;
+        const iv = PARTICLE_SCENE1.initVelScale * PARTICLE_SCENE1.liveAmp;
+        const px = pos[i3];
+        const py = pos[i3 + 1];
+        const pz = pos[i3 + 2];
+        const f0 = flowField(px, py, pz, 0);
+        const s0 = deepSurgeVelocity(px, py, pz, 0);
+        const vMul = PARTICLE_SCENE1.invertVertical ? -1 : 1;
+        const hfs = PARTICLE_SCENE1.horizontalFlowScale;
+        vels[i3] = f0.vx * iv * hfs + s0.vx;
+        vels[i3 + 1] = vMul * (f0.vy * iv + s0.vy) + PARTICLE_SCENE1.riseSpeed;
+        vels[i3 + 2] = f0.vz * iv * hfs + s0.vz;
+
+        blueWhiteColorAt(py, 0, colorTmp);
+        col[i3] = colorTmp.r;
+        col[i3 + 1] = colorTmp.g;
+        col[i3 + 2] = colorTmp.b;
+      }
+    }
+
+    resetParticlesScene1();
+
+    const particles = new THREE.Points(
+      geo,
+      new THREE.ShaderMaterial({
+        uniforms: {
+          uPointSize: {
+            value: isMobile ? PARTICLE_SCENE1.pointSizeMobile : PARTICLE_SCENE1.pointSizeDesktop,
+          },
+          uPointAtten: { value: PARTICLE_SCENE1.pointAttenuation },
+          uPointSizeMin: { value: PARTICLE_SCENE1.pointSizeMin },
+          uPointSizeMax: { value: PARTICLE_SCENE1.pointSizeMax },
+          uOpacity: { value: PARTICLE_SCENE1.uOpacity },
+          uBright: { value: PARTICLE_SCENE1.uBright },
+          uSilkFalloff: { value: PARTICLE_SCENE1.silkPointFalloff },
+          uSeaCoreGlow: { value: PARTICLE_SCENE1.seaCoreGlow },
+          uSeaEdgeDim: { value: PARTICLE_SCENE1.seaEdgeDim },
+          uEmissiveCore: { value: PARTICLE_SCENE1.emissiveCore },
+        },
+        vertexShader: `
+          uniform float uPointSize;
+          uniform float uPointAtten;
+          uniform float uPointSizeMin;
+          uniform float uPointSizeMax;
+          varying vec3 vColor;
+          void main() {
+            vColor = color;
+            vec4 mvPosition = modelViewMatrix * vec4(position, 1.0);
+            float depth = max(0.5, -mvPosition.z);
+            gl_PointSize = clamp(uPointSize * (uPointAtten / depth), uPointSizeMin, uPointSizeMax);
+            gl_Position = projectionMatrix * mvPosition;
+          }
+        `,
+        fragmentShader: `
+          uniform float uOpacity;
+          uniform float uBright;
+          uniform float uSilkFalloff;
+          uniform float uSeaCoreGlow;
+          uniform float uSeaEdgeDim;
+          uniform float uEmissiveCore;
+          varying vec3 vColor;
+          void main() {
+            vec2 p = gl_PointCoord * 2.0 - 1.0;
+            float r2 = dot(p, p);
+            if (r2 > 1.0) discard;
+            float core = exp(-r2 * uSilkFalloff * 1.15);
+            float halo = exp(-r2 * uSilkFalloff * 0.42) * 0.1;
+            float a = (core + halo) * uOpacity;
+            if (a < 0.012) discard;
+            float lit = mix(uSeaEdgeDim, 1.0 + uSeaCoreGlow, core);
+            vec3 base = vColor * uBright * lit;
+            float em = pow(core, 1.15);
+            vec3 glow = vColor * uEmissiveCore * em;
+            vec3 c = base + glow;
+            gl_FragColor = vec4(c, a);
+          }
+        `,
+        vertexColors: true,
+        transparent: true,
+        depthWrite: false,
+        depthTest: true,
+        blending: THREE.AdditiveBlending,
+      })
+    );
+    scene.add(particles);
+    setBootProgress(0.62);
+
+    const basePointSize = isMobile ? PARTICLE_SCENE1.pointSizeMobile : PARTICLE_SCENE1.pointSizeDesktop;
+
+    function wrapAxis(v, lo, hi) {
+      const w = hi - lo;
+      return lo + ((((v - lo) % w) + w) % w);
+    }
+
+    function diffusionDelta(i, time, amp, vdRatio) {
+      const di = i * 0.6180339887 + time * 0.271828;
+      const dj = i * 0.4142135623 + time * 0.182318;
+      const rx = Math.sin(di * 12.9898) * Math.cos(dj * 78.233);
+      const rz = Math.cos(di * 39.719) * Math.sin(dj * 11.536);
+      const ry = Math.sin(di * 5.7 + dj * 3.1);
+      return {
+        x: rx * amp,
+        z: rz * amp,
+        y: ry * amp * vdRatio,
+      };
+    }
+
+    function clampBounce(pos, vel, lo, hi, dampB) {
+      if (pos < lo) {
+        return { pos: lo, vel: Math.abs(vel) * dampB };
+      }
+      if (pos > hi) {
+        return { pos: hi, vel: -Math.abs(vel) * dampB };
+      }
+      return { pos, vel };
+    }
+
+    function resize() {
+      const w = window.innerWidth;
+      const h = Math.max(window.innerHeight, 1);
+      camera.aspect = w / h;
+      camera.updateProjectionMatrix();
+      renderer.setSize(w, h, true);
+      composer.setSize(w, h);
+      bloomPass.setSize(w, h);
+    }
+
+    window.addEventListener("resize", resize);
+    resize();
+    setBootProgress(0.85);
+
+    const mouse = new THREE.Vector2(0, 0);
+    let parallaxX = 0;
+    let parallaxY = 0;
+    const PARALLAX_MAX = PARTICLE_SCENE1.parallaxMax;
+    window.addEventListener("pointermove", (e) => {
+      const w = Math.max(window.innerWidth, 1);
+      const h = Math.max(window.innerHeight, 1);
+      mouse.x = (e.clientX / w) * 2 - 1;
+      mouse.y = (e.clientY / h) * 2 - 1;
+    });
+    document.body.addEventListener("pointerleave", () => {
+      mouse.x = 0;
+      mouse.y = 0;
+    });
+
+    const raycaster = new THREE.Raycaster();
+    const repelPlane = new THREE.Plane();
+    const repelHitWorld = new THREE.Vector3();
+    const repelHitLocal = new THREE.Vector3();
+    const repelWorldNormal = new THREE.Vector3(0, 1, 0);
+    const repelPlanePoint = new THREE.Vector3();
+    const repelMatInv = new THREE.Matrix4();
+
+    host.addEventListener(
+      "wheel",
+      (e) => {
+        if (!document.body.classList.contains("scene-2")) return;
+        e.preventDefault();
+        const sens = SCENE2_ZOOM.wheelSensitivity;
+        scene2CamZ = THREE.MathUtils.clamp(
+          scene2CamZ + e.deltaY * sens,
+          SCENE2_ZOOM.minZ,
+          SCENE2_ZOOM.maxZ
+        );
+        applyScene2Camera();
+      },
+      { passive: false }
+    );
+
+    let simTime = 0;
+    let lastFrameMs = performance.now();
+    let bootHidePending = true;
+    let bootHideScheduled = false;
+
+    /** 导出 JPEG：长边上限（像素），仅当画布超过时缩小；否则保留 WebGL 缓冲原始分辨率 */
+    const JPEG_EXPORT_MAX_LONG_SIDE = 3840;
+    const JPEG_EXPORT_QUALITY = 0.93;
+    let scene2MorphT0 = null;
+
+    /** Scene 1：点击 Generate 后短时粒子扩散/变亮（正弦包络，单位 ms） */
+    const SCENE1_GENERATE_BURST_MS = 1680;
+    let scene1GenerateBurstT0 = null;
+
+    function scene1GenerateBurstStrength(elapsedMs) {
+      if (elapsedMs <= 0 || elapsedMs >= SCENE1_GENERATE_BURST_MS) return 0;
+      return Math.sin((elapsedMs / SCENE1_GENERATE_BURST_MS) * Math.PI);
+    }
+
+    function smoothstep01(u) {
+      const x = THREE.MathUtils.clamp(u, 0, 1);
+      return x * x * (3 - 2 * x);
+    }
+
+    const syncBtn = document.getElementById("syncBtn");
+    const scene2BackBtn = document.getElementById("scene2BackBtn");
+    const scene2FluxImg = document.getElementById("scene2FluxImg");
+    let scene2FluxObjectUrl = null;
+    let fluxBitmapForPortrait = null;
+
+    function disposeFluxBitmap() {
+      if (fluxBitmapForPortrait) {
+        try {
+          fluxBitmapForPortrait.close();
+        } catch (_) {
+          /* ignore */
+        }
+        fluxBitmapForPortrait = null;
+      }
+    }
+
+    function setScene2Status(_msg) {
+      /* 左下角提示已取消；需要调试时可改回写入 #scene2Status */
+    }
+
+    async function loadScene2FluxImage(userText) {
+      if (!scene2FluxImg) return false;
+      disposeFluxBitmap();
+      scene2FluxImg.classList.remove("is-visible");
+      if (scene2FluxObjectUrl) {
+        URL.revokeObjectURL(scene2FluxObjectUrl);
+        scene2FluxObjectUrl = null;
+      }
+      scene2FluxImg.removeAttribute("src");
+      scene2FluxImg.onload = null;
+      scene2FluxImg.onerror = null;
+
+      setScene2Status(str("statusLoadingIntro"));
+      setGenerateProgressMilestone(0.12);
+
+      try {
+        const { blob, urlUsed } = await fetchVisionReferenceBlob(userText, (line) => {
+          setScene2Status(line + str("statusLoadingAppend"));
+          setGenerateProgressMilestone(genProgMilestone + 0.07);
+        });
+        setGenerateProgressMilestone(0.7);
+        scene2FluxObjectUrl = URL.createObjectURL(blob);
+        scene2FluxImg.crossOrigin = "";
+        scene2FluxImg.src = scene2FluxObjectUrl;
+        scene2FluxImg.classList.add("is-visible");
+
+        try {
+          fluxBitmapForPortrait = await createImageBitmap(blob);
+        } catch (e0) {
+          try {
+            fluxBitmapForPortrait = await createImageBitmap(blob, {
+              resizeWidth: 768,
+              resizeHeight: 768,
+            });
+          } catch (e1) {
+            throw new Error((e0 && e0.message) || e1);
+          }
+        }
+        setGenerateProgressMilestone(0.88);
+        const statusPrefix = urlUsed
+          ? str("statusImagePrefix") + urlUsed.slice(0, 72) + (urlUsed.length > 72 ? "…" : "")
+          : "";
+        setScene2Status(
+          statusPrefix +
+            str("statusDecoding") +
+            fluxBitmapForPortrait.width +
+            "×" +
+            fluxBitmapForPortrait.height +
+            str("statusWritingGrid")
+        );
+        setGenerateProgressMilestone(1);
+        return true;
+      } catch (e) {
+        disposeFluxBitmap();
+        const err = e && e.message ? e.message : String(e);
+        setScene2Status(err);
+        console.error(e);
+        return false;
+      }
+    }
+
+    function clearScene2FluxImage() {
+      disposeFluxBitmap();
+      if (!scene2FluxImg) return;
+      scene2FluxImg.classList.remove("is-visible");
+      scene2FluxImg.removeAttribute("src");
+      scene2FluxImg.onload = null;
+      scene2FluxImg.onerror = null;
+      if (scene2FluxObjectUrl) {
+        URL.revokeObjectURL(scene2FluxObjectUrl);
+        scene2FluxObjectUrl = null;
+      }
+    }
+
+    let generateProgressRaf = null;
+    let genProgMilestone = 0;
+    let generateProgressDisplay = 0;
+    let generateProgressT0 = 0;
+
+    function resetGenerateProgressAnim() {
+      if (generateProgressRaf) {
+        cancelAnimationFrame(generateProgressRaf);
+        generateProgressRaf = null;
+      }
+    }
+
+    function updateGenerateProgressDOM(value01) {
+      const v = Math.min(1, Math.max(0, value01));
+      const fill = document.getElementById("generateProgressFill");
+      const bar = document.getElementById("generateProgressBar");
+      if (fill) fill.style.transform = `scaleX(${v})`;
+      if (bar) bar.setAttribute("aria-valuenow", String(Math.round(v * 100)));
+    }
+
+    function tickGenerateProgressFrame() {
+      const t = performance.now() - generateProgressT0;
+      const crawl = Math.min(0.9, 0.05 + (1 - Math.exp(-t / 8800)) * 0.85);
+      generateProgressDisplay = Math.min(1, Math.max(crawl, genProgMilestone));
+      updateGenerateProgressDOM(generateProgressDisplay);
+      generateProgressRaf = requestAnimationFrame(tickGenerateProgressFrame);
+    }
+
+    function setGenerateProgressMilestone(m) {
+      const x = Math.min(1, Math.max(0, m));
+      genProgMilestone = Math.max(genProgMilestone, x);
+    }
+
+    function startGenerateProgressUi() {
+      resetGenerateProgressAnim();
+      genProgMilestone = 0.06;
+      generateProgressDisplay = 0.06;
+      generateProgressT0 = performance.now();
+      updateGenerateProgressDOM(generateProgressDisplay);
+      generateProgressRaf = requestAnimationFrame(tickGenerateProgressFrame);
+    }
+
+    function showGenerateWaitInButtonSlot() {
+      const wrap = document.getElementById("generateProgressWrap");
+      const b = document.getElementById("syncBtn");
+      if (wrap) wrap.removeAttribute("hidden");
+      if (b) {
+        b.setAttribute("hidden", "");
+        b.disabled = true;
+      }
+      startGenerateProgressUi();
+    }
+
+    function hideGenerateWaitInButtonSlot() {
+      resetGenerateProgressAnim();
+      const wrap = document.getElementById("generateProgressWrap");
+      const b = document.getElementById("syncBtn");
+      if (wrap) wrap.setAttribute("hidden", "");
+      if (b) {
+        b.removeAttribute("hidden");
+        b.disabled = false;
+      }
+      genProgMilestone = 0;
+      generateProgressDisplay = 0;
+      updateGenerateProgressDOM(0);
+    }
+
+    function showFormError(key) {
+      formErrorKey = key;
+      const el = document.getElementById("formErrorMsg");
+      const inp = document.getElementById("birth-time");
+      if (el) {
+        el.textContent = str(key);
+        el.removeAttribute("hidden");
+      }
+      if (inp) {
+        inp.setAttribute("aria-invalid", "true");
+        inp.setAttribute("aria-describedby", "formErrorMsg");
+      }
+    }
+
+    function clearFormError() {
+      formErrorKey = null;
+      const el = document.getElementById("formErrorMsg");
+      const inp = document.getElementById("birth-time");
+      if (el) {
+        el.textContent = "";
+        el.setAttribute("hidden", "");
+      }
+      if (inp) {
+        inp.removeAttribute("aria-invalid");
+        inp.removeAttribute("aria-describedby");
+      }
+    }
+
+    async function goToScene2() {
+      if (document.body.classList.contains("scene-2")) return;
+      clearFormError();
+      const visionInput = document.getElementById("birth-time");
+      const txt = visionInput ? String(visionInput.value || "").trim() : "";
+      /* Demo 模式：输入可选，空输入时使用默认构想文案 */
+      if (!txt && visionInput) {
+        visionInput.value = str("defaultPromptCore");
+      }
+      scene1GenerateBurstT0 = performance.now();
+      showGenerateWaitInButtonSlot();
+      document.body.classList.remove("scene2-particle-portrait");
+      scene2PortraitMode = false;
+      try {
+        const loaded = await loadScene2FluxImage(txt);
+        if (!loaded) {
+          hideGenerateWaitInButtonSlot();
+          showFormError("errGenerateFriendly");
+          visionInput?.focus();
+          return;
+        }
+        let portraitOk = false;
+        if (fluxBitmapForPortrait) {
+          portraitOk = fillMorphTargetsFromDrawSource(fluxBitmapForPortrait);
+        }
+        if (!portraitOk && scene2FluxImg && scene2FluxImg.naturalWidth > 0) {
+          portraitOk = fillMorphTargetsFromDrawSource(scene2FluxImg);
+        }
+        if (!portraitOk) {
+          fillMorphTargets("ambient");
+          setScene2Status(
+            (document.getElementById("scene2Status")?.textContent || "") + str("fallbackDiffuse")
+          );
+        } else {
+          setScene2Status(str("portraitOkMsg"));
+        }
+        scene2PortraitMode = portraitOk;
+        if (portraitOk) document.body.classList.add("scene2-particle-portrait");
+        scene2MorphT0 = performance.now();
+        document.body.classList.add("scene-2");
+        scene1GenerateBurstT0 = null;
+        hideGenerateWaitInButtonSlot();
+        scene2CamZ = SCENE2_CAMERA.position.z;
+        applyScene2Camera();
+        const s2 = SCENE2_FORMATION_SCALE;
+        particles.scale.set(s2, s2, s2);
+        particles.position.y = SCENE2_PARTICLE_Y_OFFSET;
+        scene.background.setHex(0x0a0a0a);
+        renderer.setClearColor(0x0a0a0a, 1);
+        bloomPass.strength = bloomStrengthScene1 * 0.9;
+      } catch (err) {
+        hideGenerateWaitInButtonSlot();
+        showFormError("errGenerateFriendly");
+        document.getElementById("birth-time")?.focus();
+        console.error(err);
+      } finally {
+        if (syncBtn) syncBtn.disabled = false;
+      }
+    }
+
+    function returnToScene1() {
+      if (!document.body.classList.contains("scene-2")) return;
+      scene1GenerateBurstT0 = null;
+      clearFormError();
+      hideGenerateWaitInButtonSlot();
+      document.body.classList.remove("scene-2");
+      document.body.classList.remove("scene2-particle-portrait");
+      scene2PortraitMode = false;
+      setScene2Status("");
+      clearScene2FluxImage();
+      scene2MorphT0 = null;
+      scene2CamZ = SCENE2_CAMERA.position.z;
+      applyScene1Camera();
+      scene.background.setHex(0x000000);
+      renderer.setClearColor(0x000000, 1);
+      bloomPass.strength = bloomStrengthScene1;
+      particles.rotation.set(0, 0, 0);
+      particles.scale.set(1, 1, 1);
+      particles.position.y = 0;
+      parallaxX = 0;
+      parallaxY = 0;
+      resetParticlesScene1();
+      geo.attributes.position.needsUpdate = true;
+      geo.attributes.color.needsUpdate = true;
+      const visionInput = document.getElementById("birth-time");
+      if (visionInput) {
+        visionInput.value = "";
+        visionInput.focus();
+      }
+    }
+
+    applyUiStrings();
+
+    function onFullscreenEvent() {
+      syncFullscreenBtn();
+      resize();
+    }
+    document.addEventListener("fullscreenchange", onFullscreenEvent);
+    document.addEventListener("webkitfullscreenchange", onFullscreenEvent);
+
+    document.getElementById("fullscreenBtn")?.addEventListener("click", async () => {
+      const root = document.documentElement;
+      try {
+        if (getFullscreenElement()) {
+          if (document.exitFullscreen) await document.exitFullscreen();
+          else if (document.webkitExitFullscreen) await document.webkitExitFullscreen();
+        } else if (root.requestFullscreen) {
+          await root.requestFullscreen();
+        } else if (root.webkitRequestFullscreen) {
+          await root.webkitRequestFullscreen();
+        }
+      } catch (err) {
+        console.warn("Fullscreen:", err);
+      }
+      syncFullscreenBtn();
+    });
+
+    document.getElementById("langBtnZh")?.addEventListener("click", () => {
+      uiLang = "zh";
+      localStorage.setItem(LANG_STORAGE_KEY, "zh");
+      applyUiStrings();
+    });
+    document.getElementById("langBtnEn")?.addEventListener("click", () => {
+      uiLang = "en";
+      localStorage.setItem(LANG_STORAGE_KEY, "en");
+      applyUiStrings();
+    });
+
+    document.getElementById("birth-time")?.addEventListener("input", () => {
+      if (formErrorKey) clearFormError();
+    });
+    document.getElementById("birth-time")?.addEventListener("keydown", (e) => {
+      if (e.key === "Enter") {
+        e.preventDefault();
+        syncBtn?.click();
+      }
+    });
+
+    if (syncBtn) {
+      syncBtn.addEventListener("click", () => {
+        void goToScene2();
+      });
+    }
+    if (scene2BackBtn) {
+      scene2BackBtn.addEventListener("click", () => {
+        returnToScene1();
+      });
+    }
+
+    const exportJpegBtn = document.getElementById("exportJpegBtn");
+    if (exportJpegBtn) {
+      exportJpegBtn.addEventListener("click", async () => {
+        if (!document.body.classList.contains("scene-2") || exportJpegBtn.disabled) return;
+        exportJpegBtn.disabled = true;
+        const prevLabel = exportJpegBtn.textContent;
+        exportJpegBtn.textContent = str("exportingJpeg");
+        try {
+          await new Promise((r) => requestAnimationFrame(r));
+          composer.render();
+          const src = renderer.domElement;
+          const sw = src.width;
+          const sh = src.height;
+          const longSide = Math.max(1, sw, sh);
+          const scale = longSide > JPEG_EXPORT_MAX_LONG_SIDE ? JPEG_EXPORT_MAX_LONG_SIDE / longSide : 1;
+          const w = Math.max(1, Math.round(sw * scale));
+          const h = Math.max(1, Math.round(sh * scale));
+          const cap = document.createElement("canvas");
+          cap.width = w;
+          cap.height = h;
+          const cctx = cap.getContext("2d");
+          if (!cctx) throw new Error("2D canvas unsupported");
+          cctx.drawImage(src, 0, 0, w, h);
+          const blob = await new Promise((resolve, reject) => {
+            cap.toBlob(
+              (b) => (b ? resolve(b) : reject(new Error("JPEG encode failed"))),
+              "image/jpeg",
+              JPEG_EXPORT_QUALITY
+            );
+          });
+          const a = document.createElement("a");
+          const url = URL.createObjectURL(blob);
+          a.href = url;
+          a.download = "flow-sight-fragment.jpg";
+          a.rel = "noopener";
+          document.body.appendChild(a);
+          a.click();
+          a.remove();
+          URL.revokeObjectURL(url);
+        } catch (err) {
+          console.error(err);
+        } finally {
+          exportJpegBtn.disabled = false;
+          exportJpegBtn.textContent = prevLabel || str("exportJpeg");
+        }
+      });
+    }
+
+    function tick(now) {
+      requestAnimationFrame(tick);
+      const dtSec = Math.min(0.05, (now - lastFrameMs) * 0.001);
+      lastFrameMs = now;
+
+      simTime += dtSec;
+      const t = simTime;
+
+      const pos = geo.attributes.position.array;
+      const col = geo.attributes.color.array;
+      const inScene2 = document.body.classList.contains("scene-2");
+
+      if (inScene2 && scene2MorphT0 != null) {
+        const morphSecEff = scene2PortraitMode ? SCENE2_PORTRAIT.morphSec : SCENE2_MORPH.morphSec;
+        const mBlend = smoothstep01((performance.now() - scene2MorphT0) * 0.001 / morphSecEff);
+        const morphPullBase = scene2PortraitMode
+          ? THREE.MathUtils.lerp(SCENE2_PORTRAIT.morphPullMin, SCENE2_PORTRAIT.morphPullMax, mBlend)
+          : SCENE2_MORPH.morphPull * (0.08 + 0.92 * mBlend);
+        const dampM = SCENE2_MORPH.dampMorph;
+        const mixPortrait =
+          SCENE2_MORPH.flowMixWhileMorph * (1 - mBlend) * (1 - mBlend) * (1 - mBlend);
+        const mixAmbient = SCENE2_MORPH.flowMixWhileMorph * (0.15 + 0.85 * mBlend);
+        const mix = scene2PortraitMode ? mixPortrait : mixAmbient;
+        const liveAmp = PARTICLE_SCENE1.liveAmp;
+        const wob = scene2PortraitMode ? 0 : SCENE2_MORPH.morphWobble;
+
+        particles.updateMatrixWorld(true);
+        repelMatInv.copy(particles.matrixWorld).invert();
+        repelPlanePoint.set(0, SCENE2_PARTICLE_Y_OFFSET, 0);
+        repelPlane.setFromNormalAndCoplanarPoint(repelWorldNormal, repelPlanePoint);
+        raycaster.setFromCamera(mouse, camera);
+        const repelHit = raycaster.ray.intersectPlane(repelPlane, repelHitWorld);
+        if (repelHit) repelHitLocal.copy(repelHit).applyMatrix4(repelMatInv);
+        const smRep = SCENE2_MOUSE;
+        const repelR = smRep.repelRadius;
+        const repelS = smRep.repelStrength;
+
+        for (let i = 0; i < count; i++) {
+          const ix = i * 3;
+          const iy = ix + 1;
+          const iz = ix + 2;
+          let x = pos[ix];
+          let y = pos[iy];
+          let z = pos[iz];
+
+          const bw = Math.sin(t * 0.58 + i * 0.016) * wob * (0.45 + 0.55 * mBlend);
+          const tlx = morphTarget[ix] + bw;
+          const tly = morphTarget[iy] - bw * 0.52;
+          const tlz = morphTarget[iz];
+
+          let tx = (tlx - x) * morphPullBase;
+          let ty = (tly - y) * morphPullBase;
+          let tz = (tlz - z) * morphPullBase;
+
+          const { vx, vy, vz } = flowField(x, y, z, t);
+          const sur = deepSurgeVelocity(x, y, z, t);
+          const vMul = PARTICLE_SCENE1.invertVertical ? -1 : 1;
+          const hfs = PARTICLE_SCENE1.horizontalFlowScale;
+          tx += (vx * liveAmp * hfs + sur.vx) * mix;
+          ty += (vMul * (vy * liveAmp + sur.vy)) * mix;
+          tz += (vz * liveAmp * hfs + sur.vz) * mix;
+
+          if (repelHit) {
+            let rx = x - repelHitLocal.x;
+            let ry = y - repelHitLocal.y;
+            let rz = z - repelHitLocal.z;
+            const rLen = Math.sqrt(rx * rx + ry * ry + rz * rz);
+            if (rLen > 1e-5 && rLen < repelR) {
+              const edge = 1 - rLen / repelR;
+              const f = repelS * edge * edge;
+              const inv = f / rLen;
+              tx += rx * inv;
+              ty += ry * inv;
+              tz += rz * inv;
+            }
+          }
+
+          vels[ix] = vels[ix] * dampM + tx * (1 - dampM);
+          vels[iy] = vels[iy] * dampM + ty * (1 - dampM);
+          vels[iz] = vels[iz] * dampM + tz * (1 - dampM);
+
+          x += vels[ix];
+          y += vels[iy];
+          z += vels[iz];
+          pos[ix] = x;
+          pos[iy] = y;
+          pos[iz] = z;
+
+          const sp = Math.sqrt(vels[ix] ** 2 + vels[iy] ** 2 + vels[iz] ** 2);
+          blueWhiteColorAt(y, sp * 0.55, colorTmp);
+          if (scene2PortraitMode) {
+            col[ix] = THREE.MathUtils.lerp(colorTmp.r, scene2ImageColorTarget[ix], mBlend);
+            col[iy] = THREE.MathUtils.lerp(colorTmp.g, scene2ImageColorTarget[iy], mBlend);
+            col[iz] = THREE.MathUtils.lerp(colorTmp.b, scene2ImageColorTarget[iz], mBlend);
+          } else {
+            col[ix] = colorTmp.r;
+            col[iy] = colorTmp.g;
+            col[iz] = colorTmp.b;
+          }
+        }
+
+        const sm = SCENE2_MOUSE;
+        const targetRx = -mouse.y * sm.maxRotX;
+        const targetRy = mouse.x * sm.maxRotY;
+        const a = THREE.MathUtils.clamp(sm.follow * dtSec, 0, 1);
+        particles.rotation.x += (targetRx - particles.rotation.x) * a;
+        particles.rotation.y += (targetRy - particles.rotation.y) * a;
+        particles.rotation.z = 0;
+
+        const psMul = scene2PortraitMode ? THREE.MathUtils.lerp(1, 0.52, mBlend) : 1;
+        particles.material.uniforms.uPointSize.value = basePointSize * psMul;
+        particles.material.uniforms.uSilkFalloff.value = PARTICLE_SCENE1.silkPointFalloff;
+        particles.material.uniforms.uOpacity.value = scene2PortraitMode
+          ? THREE.MathUtils.lerp(PARTICLE_SCENE1.uOpacity, SCENE2_PORTRAIT.endOpacity, mBlend)
+          : THREE.MathUtils.lerp(PARTICLE_SCENE1.uOpacity, 0.3, mBlend);
+        particles.material.uniforms.uBright.value = scene2PortraitMode
+          ? THREE.MathUtils.lerp(PARTICLE_SCENE1.uBright, SCENE2_PORTRAIT.endBright, mBlend)
+          : THREE.MathUtils.lerp(PARTICLE_SCENE1.uBright, 0.44, mBlend);
+        particles.material.uniforms.uEmissiveCore.value = PARTICLE_SCENE1.emissiveCore;
+      } else {
+        let burst = 0;
+        if (scene1GenerateBurstT0 != null) {
+          const dtB = performance.now() - scene1GenerateBurstT0;
+          burst = scene1GenerateBurstStrength(dtB);
+          if (dtB >= SCENE1_GENERATE_BURST_MS) scene1GenerateBurstT0 = null;
+        }
+
+        const damp = THREE.MathUtils.lerp(PARTICLE_SCENE1.damp, 0.966, burst * 0.75);
+        const liveAmp = PARTICLE_SCENE1.liveAmp * (1 + 3200 * burst);
+        const flowScale = 1;
+        const diffMul = 1 + 6.2 * burst;
+        const cpMul = Math.max(0.04, 1 - 0.92 * burst);
+
+        for (let i = 0; i < count; i++) {
+          const ix = i * 3;
+          const iy = ix + 1;
+          const iz = ix + 2;
+          let x = pos[ix];
+          let y = pos[iy];
+          let z = pos[iz];
+
+          let tx = 0;
+          let ty = 0;
+          let tz = 0;
+
+          const { vx, vy, vz } = flowField(x, y, z, t);
+          const sur = deepSurgeVelocity(x, y, z, t);
+          const vMul = PARTICLE_SCENE1.invertVertical ? -1 : 1;
+          const hfs = PARTICLE_SCENE1.horizontalFlowScale;
+          const cp = PARTICLE_SCENE1.centerPullXZ * cpMul;
+          const d = PARTICLE_SCENE1.diffusionAmp * flowScale * diffMul;
+          const vd = PARTICLE_SCENE1.verticalDiffusionRatio;
+          const diff = diffusionDelta(i, t, d, vd);
+          tx += (vx * liveAmp * hfs + sur.vx - x * cp + diff.x) * flowScale;
+          ty += (vMul * (vy * liveAmp + sur.vy) + PARTICLE_SCENE1.riseSpeed + diff.y) * flowScale;
+          tz += (vz * liveAmp * hfs + sur.vz - z * cp + diff.z) * flowScale;
+
+          vels[ix] = vels[ix] * damp + tx * (1 - damp);
+          vels[iy] = vels[iy] * damp + ty * (1 - damp);
+          vels[iz] = vels[iz] * damp + tz * (1 - damp);
+
+          x += vels[ix];
+          y += vels[iy];
+          z += vels[iz];
+
+          pos[iy] = wrapAxis(y, FLOW_Y_LO, FLOW_Y_HI);
+          const bd = PARTICLE_SCENE1.bounceDamp;
+          let cx = clampBounce(x, vels[ix], FLOW_X_LO, FLOW_X_HI, bd);
+          let cz = clampBounce(z, vels[iz], FLOW_Z_LO, FLOW_Z_HI, bd);
+          pos[ix] = cx.pos;
+          pos[iz] = cz.pos;
+          vels[ix] = cx.vel;
+          vels[iz] = cz.vel;
+
+          const sp = Math.sqrt(vels[ix] ** 2 + vels[iy] ** 2 + vels[iz] ** 2);
+          blueWhiteColorAt(pos[iy], sp, colorTmp);
+          col[ix] = colorTmp.r;
+          col[iy] = colorTmp.g;
+          col[iz] = colorTmp.b;
+        }
+
+        particles.material.uniforms.uPointSize.value = basePointSize * (1 + 0.42 * burst);
+        particles.material.uniforms.uSilkFalloff.value = PARTICLE_SCENE1.silkPointFalloff;
+        particles.material.uniforms.uOpacity.value = THREE.MathUtils.clamp(
+          PARTICLE_SCENE1.uOpacity + 0.16 * burst,
+          0,
+          0.95
+        );
+        particles.material.uniforms.uBright.value = PARTICLE_SCENE1.uBright + 0.26 * burst;
+        particles.material.uniforms.uEmissiveCore.value = PARTICLE_SCENE1.emissiveCore + 0.38 * burst;
+
+        parallaxX += ((-mouse.y * PARALLAX_MAX) - parallaxX) * 0.07;
+        parallaxY += ((mouse.x * PARALLAX_MAX) - parallaxY) * 0.07;
+        particles.rotation.y = t * PARTICLE_SCENE1.silkDriftY + parallaxY;
+        particles.rotation.x = Math.sin(t * 0.024) * PARTICLE_SCENE1.silkDriftXAmp + parallaxX;
+      }
+
+      geo.attributes.position.needsUpdate = true;
+      geo.attributes.color.needsUpdate = true;
+
+      composer.render();
+
+      if (bootHidePending) {
+        bootHidePending = false;
+        setBootProgress(1);
+        requestAnimationFrame(() => {
+          if (bootHideScheduled) return;
+          bootHideScheduled = true;
+          const wait = Math.max(0, BOOT_OVERLAY_MIN_MS - (performance.now() - bootOverlayT0));
+          setTimeout(() => hideBootOverlay(), wait);
+        });
+      }
+    }
+
+    requestAnimationFrame(tick);
+  </script>
+</body>
+</html>
